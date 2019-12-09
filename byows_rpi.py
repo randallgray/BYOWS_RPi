@@ -6,6 +6,20 @@ This is an weeWX driver implementation of the Build Your OWN Weather
 Station using the Raspberry Pi:
 https://projects.raspberrypi.org/en/projects/build-your-own-weather-station/
 
+Edited by Randall Gray for the following:
+1.  Using a different set of sensors which mostly use Python3 libraries.
+2.  Because of issue #1, we need to run WeeWX 4.x (currently 4.0.0b5, i.e. beta 5) as it supports Python3, for example:
+    sudo python3 ./bin/weewd weewx.conf
+    -OR-
+    sudo PYTHONPATH=bin python3 bin/user/byows_rpi.py {--readings | --sensors}
+3.  Also, the line "def get_data(self):" was incorrect.  It should read:
+    "def get_data(self, data):"
+4.  And... the entire code block for function "get_average()" was left-justified.
+    This confused Python into thinking this was a Class and as a result it threw
+    errors ("Class name error" and something like "stn not defined")
+5.  This has not been checked for Python 2.x functionality.  I don't intend on running
+    this from P2.
+
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
@@ -18,8 +32,8 @@ GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
 """
+
 import math
 import syslog
 import time
@@ -28,13 +42,23 @@ import datetime
 # Imports specific for ByowsRpiStation class
 from gpiozero import Button, MCP3008
 import os, glob
-import bme280
-import smbus2
+#import bme280
+#import smbus2
+
+# The following require the installation of Adafruit's Circuit Python
+# ALL are Python3 libraries now -- P2 is no longer supported.
+import board
+import busio
+import adafruit_sht31d as sht31d   # temp/humidity
+import adafruit_veml6075 as veml6075   # UV
+import adafruit_bme280 as bme280   # temp, humidity, pressure
+import adafruit_dht as dht22       # temp, humidity
 
 import weewx.drivers
 
 DRIVER_NAME = "BYOWS"
-DRIVER_VERSION = "0.51"
+DRIVER_VERSION = "0.51.p3.1"
+# Kind of a dumb numbering scheme indicating Python3 itieration (ver#1) originating from 0.51 of master branch by jardiamj
 
 
 def loader(config_dict, _):
@@ -76,6 +100,7 @@ class ByowsRpi(weewx.drivers.AbstractDevice):
         params["rain_bucket_pin"] = int(stn_dict.get("rain_bucket_pin", 6))
         params["bme280_port"] = int(stn_dict.get("bme280_port", 1))
         params["bme280_address"] = int(stn_dict.get("bme280_address", "0x77"), 16)
+        params["dht22_pin"] = int(stn_dict.get("dht22_pin", 18))
         params["mcp3008_channel"] = int(stn_dict.get("mcp3008_channel", 0))
         params["anem_adjustment"] = float(stn_dict.get("anemometer_adjustment", 1.18))
         params["bucket_size"] = float(stn_dict.get("bucket_size", 0.2794))
@@ -107,10 +132,17 @@ class ByowsRpiStation(object):
 
     def __init__(self, **params):
         """ Initialize Object. """
-        self.bme280_address = params.get("bme280_address")
-        self.bme280_bus = smbus2.SMBus(params.get("bme280_port"))
-        self.bme280_sensor = bme280
-        self.bme280_sensor.load_calibration_params(self.bme280_bus, self.bme280_address)
+        # Our i2c bus:
+        i2c = busio.I2C(board.SCL, board.SDA)
+        #self.bme280_address = params.get("bme280_address")
+        #self.bme280_bus = smbus2.SMBus(params.get("bme280_port"))
+        #self.bme280_sensor = bme280
+        #self.bme280_sensor.load_calibration_params(self.bme280_bus, self.bme280_address)
+        self.bme280_sensor = bme280.BME280(i2c)
+        self.sht31d_sensor = sht31d.SHT31D(i2c)
+        self.veml6075_sensor = veml6075.VEML6075(i2c)
+        #self.dht22_sensor = dht22.DHT22(board.D18)
+        #self.dht22_sensor = dht22.DHT22(board.D(params.get("dht22_pin")))
         self.bucket_size = params.get("bucket_size")  # in mm
         self.rain_count = 0
         self.wind_gauge = WindGauge(
@@ -128,15 +160,28 @@ class ByowsRpiStation(object):
 
     def get_bme280_data(self):
         try:
-            data = self.bme280_sensor.sample(self.bme280_bus, self.bme280_address)
+            #data = self.bme280_sensor.sample(self.bme280_bus, self.bme280_address)
+            data = self.bme280_sensor
             humidity = data.humidity
             pressure = data.pressure
-            temperature = data.temperature
+            temperature_C = data.temperature
+            temperature = temperature_C * 9/5.0 + 32
         except:
-            logdbg("Error sampling sensor bme280, passing None as data.")
+            logdbg("Error sampling sensor BME280, passing value None as data.")
             humidity, pressure, temperature = None, None, None
             pass
         return humidity, pressure, temperature
+
+    def get_sht31d_data(self):
+        try:
+            data = self.sht31d_sensor
+            humidity = data.relative_humidity
+            temperature_C = data.temperature
+            temperature = temperature_C * 9/5.0 + 32
+        except:
+            logdbg("Error sampling sensor SHT31d, passing value None as data.")
+            humidity, temperature = None, None
+        return humidity, temperature
 
     def get_soil_temp(self):
         return self.temp_probe.read_temp()
@@ -147,7 +192,7 @@ class ByowsRpiStation(object):
         self.reset_rainfall()
         return rainfall
 
-    def get_data(self):
+    def get_data(self, data):
         """ Generates data packets every time interval. """
         data = dict()
         anem_rotations = self.wind_gauge.wind_count / 2.0
@@ -303,34 +348,39 @@ class WindGauge(object):
         return get_average(data)
 
 
-def get_average(angles):
-    # Function that returns the average angle from a list of angles
-    sin_sum = 0.0
-    cos_sum = 0.0
+    def get_average(angles):
+        # Function that returns the average angle from a list of angles
+        sin_sum = 0.0
+        cos_sum = 0.0
 
-    for angle in angles:
-        r = math.radians(angle)
-        sin_sum += math.sin(r)
-        cos_sum += math.cos(r)
-    flen = float(len(angles))
-    s = sin_sum / flen
-    c = cos_sum / flen
-    arc = math.degrees(math.atan(s / c))
-    average = 0.0
+        for angle in angles:
+            r = math.radians(angle)
+            sin_sum += math.sin(r)
+            cos_sum += math.cos(r)
+            flen = float(len(angles))
+            s = sin_sum / flen
+            c = cos_sum / flen
+            arc = math.degrees(math.atan(s / c))
+            average = 0.0
 
-    if s > 0 and c > 0:
-        average = arc
-    elif c < 0:
-        average = arc + 180
-    elif s < 0 and c > 0:
-        average = arc + 360
+            if s > 0 and c > 0:
+                average = arc
+            elif c < 0:
+                average = arc + 180
+            elif s < 0 and c > 0:
+                average = arc + 360
 
-    return 0.0 if average == 360 else average
+        return 0.0 if average == 360 else average
 
 
-""" Section for testing purposes, so file can be run outside of weeWX.
+    """
+    Section for testing purposes, so file can be run outside of weeWX.
     invoke this as follows from the weewx root dir:
-    PYTHONPATH=bin python bin/weewx/drivers/byows_rpi.py"""
+    PYTHONPATH=bin python3 bin/weewx/drivers/byows_rpi.py
+
+    Better: Invoke from /home/weewx/bin/user -- this dir is *not* overwritten during upgrades.  rg
+    """
+
 if __name__ == "__main__":
     station = ByowsRpiStation()
     packet = {"dateTime": int(time.time() + 0.5), "usUnits": weewx.METRIC}
