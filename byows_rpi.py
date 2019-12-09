@@ -100,7 +100,8 @@ class ByowsRpi(weewx.drivers.AbstractDevice):
         params["rain_bucket_pin"] = int(stn_dict.get("rain_bucket_pin", 6))
         params["bme280_port"] = int(stn_dict.get("bme280_port", 1))
         params["bme280_address"] = int(stn_dict.get("bme280_address", "0x77"), 16)
-        params["dht22_pin"] = int(stn_dict.get("dht22_pin", 4))
+        #params["dht22_pin"] = int(stn_dict.get("dht22_pin", 4))
+        params["dht22_pin"] = stn_dict.get("dht22_pin", "board.D4")
         params["mcp3008_channel"] = int(stn_dict.get("mcp3008_channel", 0))
         params["anem_adjustment"] = float(stn_dict.get("anemometer_adjustment", 1.18))
         params["bucket_size"] = float(stn_dict.get("bucket_size", 0.2794))
@@ -142,7 +143,7 @@ class ByowsRpiStation(object):
         self.sht31d_sensor = sht31d.SHT31D(i2c)
         self.veml6075_sensor = veml6075.VEML6075(i2c)
         #self.dht22_sensor = dht22.DHT22(board.D18)
-        #self.dht22_sensor = dht22.DHT22(board.D(params.get("dht22_pin")))
+        self.dht22_sensor = dht22.DHT22((params.get("dht22_pin")))
         self.bucket_size = params.get("bucket_size")  # in mm
         self.rain_count = 0
         self.wind_gauge = WindGauge(
