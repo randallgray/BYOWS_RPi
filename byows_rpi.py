@@ -100,7 +100,7 @@ class ByowsRpi(weewx.drivers.AbstractDevice):
         params["rain_bucket_pin"] = int(stn_dict.get("rain_bucket_pin", 6))
         params["bme280_port"] = int(stn_dict.get("bme280_port", 1))
         params["bme280_address"] = int(stn_dict.get("bme280_address", "0x77"), 16)
-        params["dht22_pin"] = int(stn_dict.get("dht22_pin", 18))
+        params["dht22_pin"] = int(stn_dict.get("dht22_pin", 4))
         params["mcp3008_channel"] = int(stn_dict.get("mcp3008_channel", 0))
         params["anem_adjustment"] = float(stn_dict.get("anemometer_adjustment", 1.18))
         params["bucket_size"] = float(stn_dict.get("bucket_size", 0.2794))
