@@ -358,18 +358,18 @@ class WindGauge(object):
             r = math.radians(angle)
             sin_sum += math.sin(r)
             cos_sum += math.cos(r)
-            flen = float(len(angles))
-            s = sin_sum / flen
-            c = cos_sum / flen
-            arc = math.degrees(math.atan(s / c))
-            average = 0.0
+        flen = float(len(angles))
+        s = sin_sum / flen
+        c = cos_sum / flen
+        arc = math.degrees(math.atan(s / c))
+        average = 0.0
 
-            if s > 0 and c > 0:
-                average = arc
-            elif c < 0:
-                average = arc + 180
-            elif s < 0 and c > 0:
-                average = arc + 360
+        if s > 0 and c > 0:
+            average = arc
+        elif c < 0:
+            average = arc + 180
+        elif s < 0 and c > 0:
+            average = arc + 360
 
         return 0.0 if average == 360 else average
 
@@ -379,7 +379,7 @@ class WindGauge(object):
     invoke this as follows from the weewx root dir:
     PYTHONPATH=bin python3 bin/weewx/drivers/byows_rpi.py
 
-    Better: Invoke from /home/weewx/bin/user -- this dir is *not* overwritten during upgrades.  rg
+    Better yet: Invoke from /home/weewx/bin/user -- this dir is *not* overwritten during upgrades.  rg
     """
 
 if __name__ == "__main__":
