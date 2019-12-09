@@ -98,8 +98,8 @@ class ByowsRpi(weewx.drivers.AbstractDevice):
         params = dict()
         params["anem_pin"] = int(stn_dict.get("anemometer_pin", 5))
         params["rain_bucket_pin"] = int(stn_dict.get("rain_bucket_pin", 6))
-        params["bme280_port"] = int(stn_dict.get("bme280_port", 1))
-        params["bme280_address"] = int(stn_dict.get("bme280_address", "0x77"), 16)
+        #params["bme280_port"] = int(stn_dict.get("bme280_port", 1))
+        #params["bme280_address"] = int(stn_dict.get("bme280_address", "0x77"), 16)
         #params["dht22_pin"] = int(stn_dict.get("dht22_pin", 4))
         params["dht22_pin"] = stn_dict.get("dht22_pin", "board.D4")
         params["mcp3008_channel"] = int(stn_dict.get("mcp3008_channel", 0))
@@ -134,14 +134,14 @@ class ByowsRpiStation(object):
     def __init__(self, **params):
         """ Initialize Object. """
         # Our i2c bus:
-        i2c = busio.I2C(board.SCL, board.SDA)
+        self.i2c = busio.I2C(board.SCL, board.SDA)
         #self.bme280_address = params.get("bme280_address")
         #self.bme280_bus = smbus2.SMBus(params.get("bme280_port"))
         #self.bme280_sensor = bme280
         #self.bme280_sensor.load_calibration_params(self.bme280_bus, self.bme280_address)
-        self.bme280_sensor = bme280.BME280(i2c)
-        self.sht31d_sensor = sht31d.SHT31D(i2c)
-        self.veml6075_sensor = veml6075.VEML6075(i2c)
+        self.bme280_sensor = bme280.BME280(self.i2c)
+        self.sht31d_sensor = sht31d.SHT31D(self.i2c)
+        self.veml6075_sensor = veml6075.VEML6075(self.i2c)
         #self.dht22_sensor = dht22.DHT22(board.D18)
         self.dht22_sensor = dht22.DHT22((params.get("dht22_pin")))
         self.bucket_size = params.get("bucket_size")  # in mm
@@ -379,7 +379,7 @@ class WindGauge(object):
     invoke this as follows from the weewx root dir:
     PYTHONPATH=bin python3 bin/weewx/drivers/byows_rpi.py
 
-    Better yet: Invoke from /home/weewx/bin/user -- this dir is *not* overwritten during upgrades.  rg
+    Better yet: Invoke from /home/weewx/bin/user -- this dir is *not* overwritten during upgrades.
     """
 
 if __name__ == "__main__":
