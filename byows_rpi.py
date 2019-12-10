@@ -55,6 +55,7 @@ import adafruit_bme280 as bme280   # temp, humidity, pressure
 import adafruit_dht as dht22       # temp, humidity
 
 import weewx.drivers
+import weewx.units
 
 DRIVER_NAME = "BYOWS"
 DRIVER_VERSION = "0.51.p3.1"
@@ -130,10 +131,12 @@ class ByowsRpiStation(object):
 
     CM_IN_A_KM = 100000.0
     SECS_IN_AN_HOUR = 3600
+    #inHG_per_hPa = 0.02952998751    #inches of mercury per hecto Pascal  (weewx.units = INHG_PER_HPA)
+    HPA_PER_PA = 0.1    # hPa = Pascals / 100
 
     def __init__(self, **params):
         """ Initialize Object. """
-        # Our i2c bus:
+        # Our i2c bus for the bme280, sht31d, and veml6075:
         self.i2c = busio.I2C(board.SCL, board.SDA)
         #self.bme280_address = params.get("bme280_address")
         #self.bme280_bus = smbus2.SMBus(params.get("bme280_port"))
@@ -143,7 +146,7 @@ class ByowsRpiStation(object):
         self.sht31d_sensor = sht31d.SHT31D(self.i2c)
         self.veml6075_sensor = veml6075.VEML6075(self.i2c)
         #self.dht22_sensor = dht22.DHT22(board.D18)
-        self.dht22_sensor = dht22.DHT22((params.get("dht22_pin")))
+        self.dht22_sensor = dht22.DHT22(params.get("dht22_pin"))
         self.bucket_size = params.get("bucket_size")  # in mm
         self.rain_count = 0
         self.wind_gauge = WindGauge(
@@ -164,25 +167,25 @@ class ByowsRpiStation(object):
             #data = self.bme280_sensor.sample(self.bme280_bus, self.bme280_address)
             data = self.bme280_sensor
             humidity = data.humidity
-            pressure = data.pressure
+            pressure_hPa = data.pressure     #sensor reads in hectopascals (hPA)
+            pressure = pressure_hPa * weewx.units.INHG_PER_HPA     # pressure units are now inHG
             temperature_C = data.temperature
             temperature = temperature_C * 9/5.0 + 32
         except:
             logdbg("Error sampling sensor BME280, passing value None as data.")
-            humidity, pressure, temperature = None, None, None
-            pass
-        return humidity, pressure, temperature
+            inHumidity, pressure, inTemp = None, None, None
+        return inHumidity, pressure, inTemp
 
     def get_sht31d_data(self):
         try:
             data = self.sht31d_sensor
             humidity = data.relative_humidity
-            temperature_C = data.temperature
+            temperature_C = data.temperature           # sensor reads in degrees C
             temperature = temperature_C * 9/5.0 + 32
         except:
             logdbg("Error sampling sensor SHT31d, passing value None as data.")
-            humidity, temperature = None, None
-        return humidity, temperature
+            outHumidity, outTemp = None, None
+        return outHumidity, outTemp
 
     def get_soil_temp(self):
         return self.temp_probe.read_temp()
@@ -199,10 +202,16 @@ class ByowsRpiStation(object):
         anem_rotations = self.wind_gauge.wind_count / 2.0
         time_interval = self.wind_gauge.last_wind_time - time.time()
         wind_speed, wind_dir = self.wind_gauge.get_wind()
-        humidity, pressure, ambient_temp = self.get_bme280_data()
-        data["outHumidity"] = humidity
+        inHumidity, pressure, inTemp = self.get_bme280_data()
+        outHumidity, outTemp = self.get_sht31d_data()
+        uv = self.get_veml6075_data()
+        data["outHumidity"] = outHumidity
         data["pressure"] = pressure
-        data["outTemp"] = ambient_temp
+        data["outTemp"] = outTemp
+        data["inHumidity"] = inHumidity
+        data["inTemp"] = inTemp
+        data["pressure"] = pressure
+        data["UV"] = uv
         data["soilTemp1"] = self.get_soil_temp()
         data["windSpeed"] = float(wind_speed)
         data["windDir"] = wind_dir
