@@ -166,26 +166,37 @@ class ByowsRpiStation(object):
         try:
             #data = self.bme280_sensor.sample(self.bme280_bus, self.bme280_address)
             data = self.bme280_sensor
-            humidity = data.humidity
+            inHumidity = data.humidity
             pressure_hPa = data.pressure     #sensor reads in hectopascals (hPA)
             pressure = pressure_hPa * weewx.units.INHG_PER_HPA     # pressure units are now inHG
             temperature_C = data.temperature
-            temperature = temperature_C * 9/5.0 + 32
+            inTemp = temperature_C * 9/5.0 + 32
         except:
-            logdbg("Error sampling sensor BME280, passing value None as data.")
+            logdbg("Error sampling sensor BME280, passing ""None"" as data.")
             inHumidity, pressure, inTemp = None, None, None
         return inHumidity, pressure, inTemp
 
     def get_sht31d_data(self):
         try:
             data = self.sht31d_sensor
-            humidity = data.relative_humidity
+            outHumidity = data.relative_humidity
             temperature_C = data.temperature           # sensor reads in degrees C
-            temperature = temperature_C * 9/5.0 + 32
+            outTemp = temperature_C * 9/5.0 + 32
         except:
-            logdbg("Error sampling sensor SHT31d, passing value None as data.")
+            logdbg("Error sampling sensor SHT31d, passing ""None"" as data.")
             outHumidity, outTemp = None, None
         return outHumidity, outTemp
+
+    def get_veml6075_data(self):
+        try:
+            data = self.veml6075_sensor
+            uv = data.uv_index
+            uva = data.uva
+            uvb = data.uvb
+        except:
+            logdbg("Error sampling VEML6075 sensor, passing ""None"" as UV value.")
+            uv, uva, uvb = None, None, None
+        return uv, uva, uvb
 
     def get_soil_temp(self):
         return self.temp_probe.read_temp()
