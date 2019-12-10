@@ -216,13 +216,15 @@ class ByowsRpiStation(object):
         inHumidity, pressure, inTemp = self.get_bme280_data()
         outHumidity, outTemp = self.get_sht31d_data()
         uv = self.get_veml6075_data()
-        data["outHumidity"] = outHumidity
+        data["outHumidity"] = outHumidity    # The sht31d returns relative humidity
         data["pressure"] = pressure
         data["outTemp"] = outTemp
-        data["inHumidity"] = inHumidity
+        data["inHumidity"] = inHumidity      # uncorrected humidity from the bme280 ("specific humidity"?)
         data["inTemp"] = inTemp
         data["pressure"] = pressure
         data["UV"] = uv
+        data["UVA"] = UVA
+        data["UVB"] = UVB
         data["soilTemp1"] = self.get_soil_temp()
         data["windSpeed"] = float(wind_speed)
         data["windDir"] = wind_dir
