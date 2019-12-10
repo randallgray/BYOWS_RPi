@@ -166,7 +166,7 @@ class ByowsRpiStation(object):
         try:
             #data = self.bme280_sensor.sample(self.bme280_bus, self.bme280_address)
             data = self.bme280_sensor
-            inHumidity = data.humidity
+            inHumidity = data.humidity       #sensor data is specific humidity?
             pressure_hPa = data.pressure     #sensor reads in hectopascals (hPA)
             pressure = pressure_hPa * weewx.units.INHG_PER_HPA     # pressure units are now inHG
             temperature_C = data.temperature
