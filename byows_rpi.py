@@ -166,7 +166,7 @@ class ByowsRpiStation(object):
         try:
             #data = self.bme280_sensor.sample(self.bme280_bus, self.bme280_address)
             data = self.bme280_sensor
-            inHumidity = data.humidity       #sensor data is specific humidity?
+            inHumidity = data.humidity
             pressure_hPa = data.pressure     #sensor reads in hectopascals (hPA)
             pressure = pressure_hPa * weewx.units.INHG_PER_HPA     # pressure units are now inHG
             temperature_C = data.temperature
@@ -216,10 +216,10 @@ class ByowsRpiStation(object):
         inHumidity, pressure, inTemp = self.get_bme280_data()
         outHumidity, outTemp = self.get_sht31d_data()
         uv = self.get_veml6075_data()
-        data["outHumidity"] = outHumidity    # The sht31d returns relative humidity
+        data["outHumidity"] = outHumidity
         data["pressure"] = pressure
         data["outTemp"] = outTemp
-        data["inHumidity"] = inHumidity      # uncorrected humidity from the bme280 ("specific humidity"?)
+        data["inHumidity"] = inHumidity
         data["inTemp"] = inTemp
         data["pressure"] = pressure
         data["UV"] = uv
