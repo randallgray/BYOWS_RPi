@@ -8,17 +8,16 @@ https://projects.raspberrypi.org/en/projects/build-your-own-weather-station/
 
 Edited by Randall Gray for the following:
 1.  Using a different set of sensors which mostly use Python3 libraries.
-2.  Because of issue #1, we need to run WeeWX 4.x (currently 4.0.0b5, i.e. beta 5) as it supports Python3, for example:
+2.  Because of issue #1, I need to run WeeWX 4.x (currently 4.0.0b5, i.e. beta 5) as it supports Python3, for example:
     sudo python3 ./bin/weewd weewx.conf
     -OR-
     sudo PYTHONPATH=bin python3 bin/user/byows_rpi.py {--readings | --sensors}
-3.  Also, the line "def get_data(self):" was incorrect.  It should read:
-    "def get_data(self, data):"
-4.  And... the entire code block for function "get_average()" was left-justified.
-    This confused Python into thinking this was a Class and as a result it threw
-    errors ("Class name error" and something like "stn not defined")
-5.  This has not been checked for Python 2.x functionality.  I don't intend on running
-    this from P2.
+3.  Is line "def get_data(self):" incorrect?  Should it read:
+    "def get_data(self, data):" ??
+4.  Is line 116 ("def genLoopPackets():") incorrect?  Should it read:?
+    "def genLoopPackets(self):" ??
+5.  This has not been checked for Python 2.x functionality.  I don't intend on
+    ever running it from P2.
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -58,8 +57,8 @@ import weewx.drivers
 import weewx.units
 
 DRIVER_NAME = "BYOWS"
-DRIVER_VERSION = "0.51.p3.1"
-# Kind of a dumb numbering scheme indicating Python3 itieration (ver#1) originating from 0.51 of master branch by jardiamj
+DRIVER_VERSION = "0.51.rg2"
+# Dumb numbering scheme indicating my fork originating from 0.51 of master branch by jardiamj
 
 
 def loader(config_dict, _):
@@ -371,29 +370,31 @@ class WindGauge(object):
         return get_average(data)
 
 
-    def get_average(angles):
-        # Function that returns the average angle from a list of angles
-        sin_sum = 0.0
-        cos_sum = 0.0
+""" This is *not* part of the WindGauge class -- also, it is no longer used """
+def get_average(angles):
+    # Function that returns the average angle from a list of angles
+    sin_sum = 0.0
+    cos_sum = 0.0
 
-        for angle in angles:
-            r = math.radians(angle)
-            sin_sum += math.sin(r)
-            cos_sum += math.cos(r)
-        flen = float(len(angles))
-        s = sin_sum / flen
-        c = cos_sum / flen
-        arc = math.degrees(math.atan(s / c))
-        average = 0.0
+    for angle in angles:
+        r = math.radians(angle)
+        sin_sum += math.sin(r)
+        cos_sum += math.cos(r)
+    flen = float(len(angles))
+    s = sin_sum / flen
+    c = cos_sum / flen
+    arc = math.degrees(math.atan(s / c))
+    average = 0.0
 
-        if s > 0 and c > 0:
-            average = arc
-        elif c < 0:
-            average = arc + 180
-        elif s < 0 and c > 0:
-            average = arc + 360
+    if s > 0 and c > 0:
+        average = arc
+    elif c < 0:
+        average = arc + 180
+    elif s < 0 and c > 0:
+        average = arc + 360
 
-        return 0.0 if average == 360 else average
+    return 0.0 if average == 360 else average
+    """ end get_average() """
 
 
     """
